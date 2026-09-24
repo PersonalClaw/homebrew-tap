@@ -1,0 +1,58 @@
+# Gate for the PersonalClaw formula.
+#
+# `style` is cheap and catches the cop that rejects a predictable PyPI URL. `install-macos`
+# is the one that matters: a GitHub-hosted macOS runner is a fresh machine per run, so it
+# is the closest available stand-in for the "clean mac" the formula claims to work on.
+name: formula
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Dependencies resolve at install time, so this formula can break without anyone
+  # touching it. Check weekly rather than finding out from a user.
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  style:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: brew style
+        run: brew style Formula/personalclaw.rb
+
+  install-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: brew install --build-from-source
+        run: brew install --build-from-source ./Formula/personalclaw.rb
+
+      # Not redundant with the formula's own `test do` block: this asserts the binary is on
+      # PATH through the symlink `brew link` made, which is what a user actually types.
+      - name: personalclaw --version
+        run: |
+          which personalclaw
+          personalclaw --version
+
+      - name: brew test
+        run: brew test personalclaw
+
+      # The dashboard is bundled in the wheel. A formula that installed a gateway serving
+      # no SPA would still pass --version, so assert the asset tree arrived.
+      - name: SPA is bundled
+        run: |
+          "$(brew --prefix personalclaw)/libexec/bin/python" - <<'PY'
+          import pathlib
+          import personalclaw
+          dist = pathlib.Path(personalclaw.__file__).parent / "static" / "dist"
+          files = list(dist.rglob("*")) if dist.exists() else []
+          print(f"SPA files: {len(files)}")
+          assert files, f"no SPA bundled at {dist}"
+          PY

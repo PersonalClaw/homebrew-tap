@@ -1,0 +1,4 @@
+# Homebrew leaves nothing to ignore here; this file exists so the tap does not
+# accumulate editor and OS droppings.
+.DS_Store
+*.swp
