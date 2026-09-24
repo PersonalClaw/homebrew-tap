@@ -87,7 +87,11 @@ Paste them over the existing two lines, then re-check:
 
 ```bash
 brew style Formula/personalclaw.rb
-brew install --build-from-source ./Formula/personalclaw.rb
+# Installing a formula BY PATH is refused ("Homebrew requires formulae to be in a tap"),
+# so point the tap at this working copy and install through it.
+brew untap PersonalClaw/tap 2>/dev/null
+brew tap PersonalClaw/tap "file://$PWD"
+brew install personalclaw/tap/personalclaw
 brew test personalclaw
 ```
 
@@ -97,12 +101,18 @@ digest of a published file; there is nothing to point it at before the release j
 
 ## Verification
 
-`.github/workflows/formula.yml` runs on every push and pull request:
+`.github/workflows/formula.yml` runs on every push and pull request, and weekly on a
+schedule because an install-time-resolved formula can break with nobody touching it. One
+job, on a **clean GitHub-hosted macOS runner** — a fresh machine per run, which is the
+closest available stand-in for the "clean mac" this formula has to work on. It runs `brew
+style`, taps the checkout under test, runs the real `brew install
+personalclaw/tap/personalclaw` and `brew test`, and asserts the bundled dashboard arrived.
 
-- `brew style` on the formula, and
-- a real `brew install --build-from-source` plus `brew test` on a **clean GitHub-hosted
-  macOS runner** — a fresh machine per run, which is the closest thing to the "clean mac"
-  this formula is supposed to work on.
+There is no Linux job. Homebrew on Linux refuses an x86_64 CPU without SSSE3, which rules
+out a QEMU-emulated amd64 container on Apple Silicon (measured: `Error: Homebrew's x86_64
+support on Linux requires a CPU with SSSE3 support!`, and `QEMU_CPU=max` does not help
+because the check reads `/proc/cpuinfo`, which shows the host's ARM CPU). `brew` is also
+absent from GitHub's `ubuntu-latest` PATH.
 
 ## Licence
 

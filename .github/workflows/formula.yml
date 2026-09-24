@@ -1,8 +1,13 @@
 # Gate for the PersonalClaw formula.
 #
-# `style` is cheap and catches the cop that rejects a predictable PyPI URL. `install-macos`
-# is the one that matters: a GitHub-hosted macOS runner is a fresh machine per run, so it
-# is the closest available stand-in for the "clean mac" the formula claims to work on.
+# A GitHub-hosted macOS runner is a fresh machine per run, so this is the closest available
+# stand-in for the "clean mac" the formula claims to work on — and it is the only place the
+# formula can be exercised end to end. Homebrew on Linux refuses x86_64 CPUs without SSSE3,
+# which rules out QEMU-emulated amd64 containers on Apple Silicon.
+#
+# Everything runs on ONE macOS job on purpose: `brew` is not on PATH on GitHub's
+# ubuntu-latest images (measured — `brew: command not found`), so a separate cheap Linux
+# lint job buys nothing, and `brew style` costs seconds on a runner that is already warm.
 name: formula
 
 on:
@@ -19,20 +24,22 @@ permissions:
   contents: read
 
 jobs:
-  style:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: brew style
-        run: brew style Formula/personalclaw.rb
-
-  install-macos:
+  formula:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
 
-      - name: brew install --build-from-source
-        run: brew install --build-from-source ./Formula/personalclaw.rb
+      - name: brew style
+        run: brew style Formula/personalclaw.rb
+
+      # Tap THIS checkout, not the published remote, so a pull request tests its own diff.
+      # Installing the formula by path is refused outright ("Homebrew requires formulae to
+      # be in a tap"), and going through a tap is also what a user actually does.
+      - name: Tap this checkout
+        run: brew tap PersonalClaw/tap "file://$PWD"
+
+      - name: brew install personalclaw/tap/personalclaw
+        run: brew install personalclaw/tap/personalclaw
 
       # Not redundant with the formula's own `test do` block: this asserts the binary is on
       # PATH through the symlink `brew link` made, which is what a user actually types.
@@ -50,7 +57,9 @@ jobs:
         run: |
           "$(brew --prefix personalclaw)/libexec/bin/python" - <<'PY'
           import pathlib
+
           import personalclaw
+
           dist = pathlib.Path(personalclaw.__file__).parent / "static" / "dist"
           files = list(dist.rglob("*")) if dist.exists() else []
           print(f"SPA files: {len(files)}")
