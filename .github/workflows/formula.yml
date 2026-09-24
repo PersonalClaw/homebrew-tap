@@ -29,8 +29,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # One cop is skipped, deliberately and by name. FormulaAudit/InstallSteps asks every
+      # formula to replace `def post_install` with the declarative `post_install_steps` DSL —
+      # whose vocabulary is a fixed set of named actions (`create_symlink`,
+      # `gtk_update_icon_cache`, …) with no way to run a command. This formula's post-install
+      # has to create a virtualenv and resolve a dependency closure into it, so the
+      # suggestion cannot be followed; `def post_install` is still the honoured hook. Skipping
+      # it here rather than in a tap `.rubocop.yml` because `brew style` does not read one for
+      # a formula given by path (measured), and an inline `# rubocop:disable` is itself a
+      # style offence (Style/DisableCopsWithinSourceCodeDirective).
       - name: brew style
-        run: brew style Formula/personalclaw.rb
+        run: brew style --except-cops=FormulaAudit/InstallSteps Formula/personalclaw.rb
 
       # Tap THIS checkout, not the published remote, so a pull request tests its own diff.
       # Installing the formula by path is refused outright ("Homebrew requires formulae to
