@@ -88,10 +88,19 @@ class Personalclaw < Formula
     bin.write_exec_script libexec/"venv/bin/personalclaw"
   end
 
-  # `post_install_steps` is a DECLARATIVE step list (`mkdir_p`, `chmod`, …) and cannot express
-  # "create a virtualenv and resolve a dependency closure into it", so the cop's suggestion
-  # does not apply. `def post_install` is still the honoured hook — Homebrew 7.0.6 runs it at
-  # formula_installer.rb: `post_install if post_install_steps_defined? || post_install_defined?`.
+  # ⚠️ `brew install` PRINTS "Calling `post_install` is deprecated! Use `post_install_steps`
+  # instead." (measured on a fresh linuxbrew). That warning is expected and must not be
+  # "fixed" by moving this body into `install` — doing so reinstates the dylib-relocation
+  # failure described at the top of this file, which exits 1 on every macOS install.
+  #
+  # `post_install_steps` cannot replace it. Its vocabulary is a closed set of named formula
+  # actions (`configure_gcc_runtime`, `configure_php`, `bootstrap_cpython`, `create_symlink`, …)
+  # with no way to run an arbitrary command, so "create a virtualenv and resolve a dependency
+  # closure into it" is not expressible. `def post_install` is still the honoured hook —
+  # Homebrew 7.0.6 runs it from formula_installer.rb as
+  # `post_install if post_install_steps_defined? || post_install_defined?`. When Homebrew
+  # eventually removes it, the replacement is a DSL step that can run a command, not a move
+  # back into `install`.
   def post_install
     # A dedicated venv, never Homebrew's shared site-packages: PersonalClaw installs an app
     # bundle's own Python dependencies into its interpreter at runtime

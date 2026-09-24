@@ -62,9 +62,12 @@ jobs:
 
       # The dashboard is bundled in the wheel. A formula that installed a gateway serving
       # no SPA would still pass --version, so assert the asset tree arrived.
+      #
+      # `libexec/venv/bin/python`, not `libexec/bin/python`: the venv sits one level down
+      # because it is created in post_install, which is also where the staged sdist lives.
       - name: SPA is bundled
         run: |
-          "$(brew --prefix personalclaw)/libexec/bin/python" - <<'PY'
+          "$(brew --prefix personalclaw)/libexec/venv/bin/python" - <<'PY'
           import pathlib
 
           import personalclaw
