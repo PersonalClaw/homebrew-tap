@@ -55,7 +55,7 @@ class Personalclaw < Formula
   #   curl -s https://pypi.org/pypi/personalclaw/<VERSION>/json \
   #     | python3 -c 'import json,sys; u=[u for u in json.load(sys.stdin)["urls"] \
   #         if u["packagetype"]=="sdist"][0]; \
-  #         print(f"""  url "{u["url"]}"\n  sha256 "{u["digests"]["sha256"]}"""")'
+  #         print(f"""  url "{u["url"]}"\n  sha256 "{u["digests"]["sha256"]}\"""")'
   #
   # Deliberately NO `head` spec. A git checkout has no built SPA (`static/dist` is a symlink
   # produced by `make web-build`, which needs Node), so `--HEAD` would install a gateway that
