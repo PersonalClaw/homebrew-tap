@@ -121,7 +121,7 @@ class Personalclaw < Formula
 
   def caveats
     <<~EOS
-      Next step — create the config home and pick a provider:
+      Next step — create the config home and pick a workspace directory and timezone:
         personalclaw setup
 
       Then start the dashboard on http://localhost:10000:

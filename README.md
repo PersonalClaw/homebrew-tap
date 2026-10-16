@@ -19,7 +19,7 @@ brew install personalclaw/tap/personalclaw
 Then:
 
 ```bash
-personalclaw setup      # create ~/.personalclaw and pick a provider
+personalclaw setup      # create ~/.personalclaw, then pick a workspace and timezone
 personalclaw gateway    # dashboard on http://localhost:10000
 ```
 
