@@ -88,35 +88,48 @@ class Personalclaw < Formula
     bin.write_exec_script libexec/"venv/bin/personalclaw"
   end
 
-  # ⚠️ `brew install` PRINTS "Calling `post_install` is deprecated! Use `post_install_steps`
-  # instead." (measured on a fresh linuxbrew). That warning is expected and must not be
-  # "fixed" by moving this body into `install` — doing so reinstates the dylib-relocation
-  # failure described at the top of this file, which exits 1 on every macOS install.
+  # These steps must not move into `install`. They run as the `post_install` stage of
+  # `finish()` described at the top of this file, after `fix_dynamic_linkage`; building the
+  # venv any earlier reinstates the dylib-relocation failure, which exits 1 on every macOS
+  # install.
   #
-  # `post_install_steps` cannot replace it. Its vocabulary is a closed set of named formula
-  # actions (`configure_gcc_runtime`, `configure_php`, `bootstrap_cpython`, `create_symlink`, …)
-  # with no way to run an arbitrary command, so "create a virtualenv and resolve a dependency
-  # closure into it" is not expressible. `def post_install` is still the honoured hook —
-  # Homebrew 7.0.6 runs it from formula_installer.rb as
-  # `post_install if post_install_steps_defined? || post_install_defined?`. When Homebrew
-  # eventually removes it, the replacement is a DSL step that can run a command, not a move
-  # back into `install`.
-  def post_install
-    # A dedicated venv, never Homebrew's shared site-packages: PersonalClaw installs an app
-    # bundle's own Python dependencies into its interpreter at runtime
-    # (apps/app_manager.py::_install_python_deps), so it needs an environment it may write to
-    # rather than an externally-managed one.
-    #
-    # An absolute interpreter path, not a bare `python3.13`: `post_install` does NOT run
-    # under Homebrew's superenv, so a declared dependency's bin is not on PATH here.
-    rm_r(libexec/"venv") if (libexec/"venv").exist?
-    system formula_opt_bin("python@3.13")/"python3.13", "-m", "venv", libexec/"venv"
-
-    # --prefer-binary: take a published wheel when one exists for this platform and fall back
-    # to an sdist only when it does not. Without it pip builds numpy and lxml from source and
-    # the install takes an order of magnitude longer.
-    system libexec/"venv/bin/python", "-m", "pip", "install",
-           "--no-cache-dir", "--prefer-binary", libexec/"sdist"
+  # They remove any venv an earlier run left behind (`remove` ignores a missing path, so a
+  # `brew postinstall personalclaw` re-run starts clean), create a fresh one with python@3.13,
+  # and pip install the staged sdist into it.
+  #
+  # A dedicated venv, never Homebrew's shared site-packages: PersonalClaw installs an app
+  # bundle's own Python dependencies into its interpreter at runtime
+  # (apps/app_manager.py::_install_python_deps), so it needs an environment it may write to
+  # rather than an externally-managed one.
+  #
+  # An absolute interpreter path, not a bare `python3.13`: post-install does NOT run under
+  # Homebrew's superenv, so a declared dependency's bin is not on PATH, and a `run` command
+  # without a base is looked up on PATH. `base: :homebrew_prefix` plus
+  # `opt/python@3.13/bin/python3.13` is the interpreter in python@3.13's opt bin. A steps block
+  # takes only literals, so it cannot call `formula_opt_bin`; paths inside `args` use
+  # `{{libexec}}`, which Homebrew expands when the step runs.
+  #
+  # --prefer-binary: take a published wheel when one exists for this platform and fall back to
+  # an sdist only when it does not. Without it pip builds numpy and lxml from source and the
+  # install takes an order of magnitude longer.
+  #
+  # `writable_paths` and `network_access` record what each command needs (pip builds the sdist
+  # in place). Homebrew reads them only for casks today. For a formula it sandboxes the whole
+  # post-install instead. The keg is writable, and network follows the post-install setting
+  # that `allow_network_access! :postinstall` above declares.
+  post_install_steps do
+    remove "venv", base: :libexec, recursive: true
+    run "opt/python@3.13/bin/python3.13",
+        base:           :homebrew_prefix,
+        args:           ["-m", "venv", "{{libexec}}/venv"],
+        writable_paths: ["venv"],
+        writable_base:  :libexec
+    run "venv/bin/python",
+        base:           :libexec,
+        args:           ["-m", "pip", "install", "--no-cache-dir", "--prefer-binary", "{{libexec}}/sdist"],
+        writable_paths: ["venv", "sdist"],
+        writable_base:  :libexec,
+        network_access: true
   end
 
   def caveats
