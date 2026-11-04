@@ -60,8 +60,8 @@ class Personalclaw < Formula
   # Deliberately NO `head` spec. A git checkout has no built SPA (`static/dist` is a symlink
   # produced by `make web-build`, which needs Node), so `--HEAD` would install a gateway that
   # serves no dashboard. One install path that works beats two where one is a trap.
-  url "https://files.pythonhosted.org/packages/6d/ff/67a26d6689e7ff53144e5157ec6276b3c79442a080dc3c0daa4fce1dfc9a/personalclaw-0.2.2.tar.gz"
-  sha256 "a61b3eca4c1f3706bd194c47867de6ad37a2b077e779a842e8b9f22462eaa084"
+  url "https://files.pythonhosted.org/packages/4b/49/3a5f134bb6a7f53b43da4be1d3f7091c0a7a72d5fd9ab29df10a66b647ed/personalclaw-0.3.6.tar.gz"
+  sha256 "1ef0d915f6b57fe413fd42567782ec1369f4a3eb8e04c00718ba6efe61640991"
   license "MIT"
 
   livecheck do
